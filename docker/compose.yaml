@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    image: anomaly-backend
+    environment:
+      - TRAIN_IF_MISSING=1
+      - MODEL_DIR=/models
+    volumes:
+      - ../models:/models
+    ports:
+      - "8000:8000"
+
+  ui:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ui
+    image: anomaly-ui
+    environment:
+      - BACKEND_URL=http://backend:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+
+networks:
+  default:
+    name: anomaly-net

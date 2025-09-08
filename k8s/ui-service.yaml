@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: anomaly-ui
+  namespace: anomaly
+  labels:
+    app: anomaly-ui
+spec:
+  type: ClusterIP
+  selector:
+    app: anomaly-ui
+  ports:
+    - name: http
+      port: 8501
+      targetPort: 8501
+
