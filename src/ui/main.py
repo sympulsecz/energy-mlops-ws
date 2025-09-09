@@ -523,6 +523,12 @@ def main() -> None:
                 total = int(st.session_state.burst_reqs)
                 workers = int(st.session_state.burst_workers)
                 overall = st.progress(0.0, text="Running sustained bursts…")
+                # Initialize accumulators for summary
+                latencies: List[float] = []
+                ok = 0
+                err = 0
+                anomalies_total = 0
+                served_counts: Dict[str, int] = {}
                 for c in range(cycles):
                     batches: List[List[Dict]] = [
                         take_batch(int(batch_size)) for _ in range(total)
@@ -608,13 +614,6 @@ def main() -> None:
         st.warning(f"Simulator inline fallback in use: {SIM_IMPORT_ERROR}")
 
     render_chart()
-
-    if st.session_state.last_summary:
-        st.subheader("Request Summary (last action)")
-        summary_df = pd.DataFrame(
-            list(st.session_state.last_summary.items()), columns=["metric", "value"]
-        )
-        st.table(summary_df)
 
     if st.session_state.running:
         try:
