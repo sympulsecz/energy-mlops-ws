@@ -2,8 +2,8 @@
 MLOps Workshop for Energy Sector: a simple lightweight intro to "From IPython Notebook to Prod"
 
 Quickstart (Backend)
-- Install deps: `uv sync` (or `pip install -e .[dev]`)
-- Run API: `python -m src.backend.main` or `uvicorn src.backend.app:app --host 0.0.0.0 --port 8000`
+- Install deps: `uv sync --extra dev` (or `pip install -e .[dev]`)
+- Run API: `uv run python -m src.backend.main` or `uv run uvicorn src.backend.app:app --host 0.0.0.0 --port 8000`
 - Health check: `GET http://localhost:8000/health`
 - Predict: `POST http://localhost:8000/predict` with `{ "readings": [{"voltage":230, "current":10, "frequency":50}] }`
 - Metrics: `GET http://localhost:8000/metrics`
@@ -12,7 +12,7 @@ The first run trains a small IsolationForest on synthetic data and saves `models
 
 Quickstart (UI)
 - Start backend first (see above)
-- Launch UI: `streamlit run src/ui/main.py`
+- Launch UI: `uv run streamlit run src/ui/main.py`
 - In the sidebar, set Backend URL (default `http://localhost:8000`), choose batch size, interval, and anomaly rate.
 - Click "Generate Batch" to send one batch, or "Start Streaming" to continuously send batches and visualize anomalies.
 
@@ -78,19 +78,19 @@ Load Generation (local or k8s via port-forward)
 
 End-to-End Test Plan
 - Local (bare Python):
-  1) `uv sync` (or `pip install -e .[dev]`)
-  2) Backend: `python -m src.backend.main`
-  3) UI: `streamlit run src/ui/main.py`
+  1) `uv sync --extra dev` (or `pip install -e .[dev]`)
+  2) Backend: `uv run python -m src.backend.main`
+  3) UI: `uv run streamlit run src/ui/main.py`
   4) Use UI to generate batches/stream; optionally run `python scripts/load.py ...` for sustained load.
 - Docker Compose:
   1) `cd docker && docker compose up --build`
   2) UI at `http://localhost:8501` (talks to backend)
-  3) Optionally run load: `python ../scripts/load.py --url http://localhost:8000 --rps 100 --duration 60`
+  3) Optionally run load: `uv run python ../scripts/load.py --url http://localhost:8000 --rps 100 --duration 60`
 - Kubernetes (kind):
   1) `kind create cluster --name anomaly`
   2) Install metrics-server (see above) and verify `kubectl top nodes`
   3) Build images and load into kind (see above)
   4) `kubectl apply -k k8s/`
   5) Port-forward UI: `kubectl -n anomaly port-forward svc/anomaly-ui 8501:8501`
-  6) (Optional) Port-forward backend and run `python scripts/load.py ...` to drive HPA
+  6) (Optional) Port-forward backend and run `uv run python scripts/load.py ...` to drive HPA
   7) Watch scaling: `kubectl -n anomaly get hpa -w` and `kubectl -n anomaly get pods -w`
