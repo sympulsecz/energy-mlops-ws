@@ -160,7 +160,9 @@ def fetch_health(url: str) -> Dict:
 
 def predict(url: str, readings: List[Dict]) -> Tuple[List[Dict], str, float]:
     payload = {"readings": readings}
-    headers = {"Connection": "close"} if st.session_state.get("new_conn_each_request") else {}
+    headers = (
+        {"Connection": "close"} if st.session_state.get("new_conn_each_request") else {}
+    )
     t0 = time.perf_counter()
     r = requests.post(f"{url}/predict", json=payload, headers=headers, timeout=5)
     r.raise_for_status()
@@ -203,13 +205,26 @@ def _latency_stats(latencies: List[float]) -> Dict[str, float]:
     n = len(lats)
     p95 = lats[min(max(int(0.95 * n) - 1, 0), n - 1)]
     p99 = lats[min(max(int(0.99 * n) - 1, 0), n - 1)]
-    return {"avg_s": round(mean(lats), 4), "p95_s": round(p95, 4), "p99_s": round(p99, 4)}
+    return {
+        "avg_s": round(mean(lats), 4),
+        "p95_s": round(p95, 4),
+        "p99_s": round(p99, 4),
+    }
 
 
-def set_summary(action: str, ok: int, err: int, latencies: List[float], anomalies: int, served_counts: Dict[str, int]) -> None:
+def set_summary(
+    action: str,
+    ok: int,
+    err: int,
+    latencies: List[float],
+    anomalies: int,
+    served_counts: Dict[str, int],
+) -> None:
     stats = _latency_stats(latencies)
     distinct = len(served_counts)
-    top_inst = max(served_counts.items(), key=lambda x: x[1])[0] if served_counts else ""
+    top_inst = (
+        max(served_counts.items(), key=lambda x: x[1])[0] if served_counts else ""
+    )
     st.session_state.last_summary = {
         "action": action,
         "requests_ok": ok,
@@ -243,13 +258,22 @@ def render_chart() -> None:
     df = pd.DataFrame(rows)
 
     st.subheader(f"Sensor Readings (last {len(df)} points)")
-    df_long = df.melt(id_vars=["idx", "anomaly", "score", "served_by"], value_vars=["voltage", "current", "frequency"], var_name="series", value_name="value")
+    df_long = df.melt(
+        id_vars=["idx", "anomaly", "score", "served_by"],
+        value_vars=["voltage", "current", "frequency"],
+        var_name="series",
+        value_name="value",
+    )
 
-    base = alt.Chart(df_long).mark_line().encode(
-        x=alt.X("idx:Q", title="time (index)"),
-        y=alt.Y("value:Q", title="value"),
-        color=alt.Color("series:N", legend=alt.Legend(title="signal")),
-        tooltip=["series", alt.Tooltip("value:Q", format=".2f"), "idx"],
+    base = (
+        alt.Chart(df_long)
+        .mark_line()
+        .encode(
+            x=alt.X("idx:Q", title="time (index)"),
+            y=alt.Y("value:Q", title="value"),
+            color=alt.Color("series:N", legend=alt.Legend(title="signal")),
+            tooltip=["series", alt.Tooltip("value:Q", format=".2f"), "idx"],
+        )
     )
 
     anom_points = (
@@ -357,9 +381,13 @@ def main() -> None:
             if st.button("Generate Batch"):
                 readings = take_batch(int(batch_size))
                 try:
-                    preds, served_by, dt = predict(st.session_state.backend_url, readings)
+                    preds, served_by, dt = predict(
+                        st.session_state.backend_url, readings
+                    )
                     update_buffer(readings, preds, served_by)
-                    anomalies_now = sum(1 for p in preds if bool(p.get("anomaly", False)))
+                    anomalies_now = sum(
+                        1 for p in preds if bool(p.get("anomaly", False))
+                    )
                     set_summary(
                         "generate_batch",
                         ok=1,
@@ -406,7 +434,9 @@ def main() -> None:
                     update_buffer(readings, preds, served_by)
                     latencies.append(dt)
                     ok += 1
-                    anomalies_total += sum(1 for p in preds if bool(p.get("anomaly", False)))
+                    anomalies_total += sum(
+                        1 for p in preds if bool(p.get("anomaly", False))
+                    )
                     served_counts[served_by] = served_counts.get(served_by, 0) + 1
                 st.success("Burst completed")
                 set_summary(
@@ -426,8 +456,14 @@ def main() -> None:
                 workers = int(st.session_state.burst_workers)
                 progress = st.progress(0.0, text="Dispatching concurrent requests…")
 
-                batches: List[List[Dict]] = [take_batch(int(batch_size)) for _ in range(total)]
-                headers = {"Connection": "close"} if st.session_state.get("new_conn_each_request") else {}
+                batches: List[List[Dict]] = [
+                    take_batch(int(batch_size)) for _ in range(total)
+                ]
+                headers = (
+                    {"Connection": "close"}
+                    if st.session_state.get("new_conn_each_request")
+                    else {}
+                )
                 backend_url = st.session_state.backend_url
 
                 def submit_one(rs: List[Dict]):
@@ -441,7 +477,12 @@ def main() -> None:
                     r.raise_for_status()
                     dt = time.perf_counter() - t0
                     data = r.json()
-                    return data.get("predictions", []), data.get("served_by", "unknown"), dt, rs
+                    return (
+                        data.get("predictions", []),
+                        data.get("served_by", "unknown"),
+                        dt,
+                        rs,
+                    )
 
                 done = 0
                 latencies: List[float] = []
@@ -456,7 +497,9 @@ def main() -> None:
                         update_buffer(rs, preds, served_by)
                         latencies.append(dt)
                         ok += 1
-                        anomalies_total += sum(1 for p in preds if bool(p.get("anomaly", False)))
+                        anomalies_total += sum(
+                            1 for p in preds if bool(p.get("anomaly", False))
+                        )
                         served_counts[served_by] = served_counts.get(served_by, 0) + 1
                         done += 1
                         progress.progress(min(done / total, 1.0))
@@ -516,8 +559,12 @@ def main() -> None:
                             update_buffer(rs, preds, served_by)
                             latencies.append(dt)
                             ok += 1
-                            anomalies_total += sum(1 for p in preds if bool(p.get("anomaly", False)))
-                            served_counts[served_by] = served_counts.get(served_by, 0) + 1
+                            anomalies_total += sum(
+                                1 for p in preds if bool(p.get("anomaly", False))
+                            )
+                            served_counts[served_by] = (
+                                served_counts.get(served_by, 0) + 1
+                            )
                     overall.progress(min((c + 1) / cycles, 1.0))
                     if c + 1 < cycles and pause > 0:
                         time.sleep(pause)

@@ -36,7 +36,9 @@ def make_payload(
     return {"readings": [gen_reading(anomaly_rate) for _ in range(batch_size)]}
 
 
-def do_request(url: str, payload: Dict, no_keepalive: bool = False) -> Tuple[bool, float]:
+def do_request(
+    url: str, payload: Dict, no_keepalive: bool = False
+) -> Tuple[bool, float]:
     t0 = time.perf_counter()
     try:
         headers = {"Connection": "close"} if no_keepalive else {}

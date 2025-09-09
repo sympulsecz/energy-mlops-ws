@@ -97,7 +97,10 @@ def create_app() -> FastAPI:
             ANOMALY_COUNT.inc(anomalies)
             total = len(preds)
             return BatchPredictResponse(
-                predictions=preds, anomalies=anomalies, total=total, served_by=INSTANCE_ID
+                predictions=preds,
+                anomalies=anomalies,
+                total=total,
+                served_by=INSTANCE_ID,
             )
         except HTTPException as he:
             status_label = str(he.status_code)
