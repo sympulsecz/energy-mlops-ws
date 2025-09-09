@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import socket
 import time
 from typing import List
 
@@ -39,6 +40,9 @@ def load_model() -> AnomalyModel:
 
 
 model_instance: AnomalyModel | None = None
+INSTANCE_ID: str = ""
+POD_NAME: str = ""
+NODE_NAME: str = ""
 
 
 def create_app() -> FastAPI:
@@ -46,8 +50,14 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     def _startup() -> None:
-        global model_instance
+        global model_instance, INSTANCE_ID, POD_NAME, NODE_NAME
         model_instance = load_model()
+        pid = os.getpid()
+        hostname = socket.gethostname()
+        POD_NAME = os.getenv("POD_NAME", hostname)
+        NODE_NAME = os.getenv("NODE_NAME", "")
+        INSTANCE_ID = f"{POD_NAME}:{pid}"
+        logger.info("instance_info", instance=INSTANCE_ID, pod=POD_NAME, node=NODE_NAME)
 
     @app.get("/health")
     def health() -> dict:
@@ -55,6 +65,9 @@ def create_app() -> FastAPI:
             "status": "ok",
             "model": "isolation_forest",
             "features": list(model_instance.feature_names) if model_instance else [],
+            "instance": INSTANCE_ID,
+            "pod": POD_NAME,
+            "node": NODE_NAME,
         }
 
     @app.post("/predict", response_model=BatchPredictResponse)
@@ -84,7 +97,7 @@ def create_app() -> FastAPI:
             ANOMALY_COUNT.inc(anomalies)
             total = len(preds)
             return BatchPredictResponse(
-                predictions=preds, anomalies=anomalies, total=total
+                predictions=preds, anomalies=anomalies, total=total, served_by=INSTANCE_ID
             )
         except HTTPException as he:
             status_label = str(he.status_code)

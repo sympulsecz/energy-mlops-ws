@@ -32,6 +32,16 @@ spec:
               value: "1"
             - name: MODEL_DIR
               value: "/models"
+            - name: WORKERS
+              value: "2"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
           readinessProbe:
             httpGet:
               path: /health
@@ -59,4 +69,3 @@ spec:
       volumes:
         - name: model-store
           emptyDir: {}
-

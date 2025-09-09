@@ -25,3 +25,4 @@ class BatchPredictResponse(BaseModel):
     predictions: List[Prediction]
     anomalies: int
     total: int
+    served_by: str | None = None

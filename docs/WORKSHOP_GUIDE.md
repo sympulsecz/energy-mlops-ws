@@ -62,9 +62,14 @@ This guide is the hands-on path for participants to build, deploy, and scale a r
 ## 4) Deploy to Kubernetes (kind)
 - Create a cluster:
   - `kind create cluster --name anomaly`
-- Install metrics server (for HPA):
+- Install and patch metrics-server (for HPA on kind):
   - `kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml`
-  - Verify: `kubectl top nodes` after ~1 minute
+  - Add insecure TLS flag for local kubelets (kind clusters):
+    - `kubectl -n kube-system patch deploy metrics-server --type='json' -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'`
+  - Rollout and verify availability:
+    - `kubectl -n kube-system rollout status deploy/metrics-server`
+    - `kubectl get apiservices | grep metrics`
+    - Now `kubectl top nodes` and `kubectl top pods -A` should work
 - Build images on your host:
   - `docker build -f docker/Dockerfile.backend -t anomaly-backend:latest .`
   - `docker build -f docker/Dockerfile.ui -t anomaly-ui:latest .`
@@ -73,16 +78,20 @@ This guide is the hands-on path for participants to build, deploy, and scale a r
   - `kind load docker-image anomaly-ui:latest --name anomaly`
 - Deploy manifests:
   - `kubectl apply -k k8s/`
+- If you rebuild images and don’t see changes in K8s:
+  - Use the helper: `./scripts/kind_redeploy.sh`
+  - Or: rebuild → kind load → `kubectl -n anomaly rollout restart deploy anomaly-backend anomaly-ui`
 - Access services via port-forward:
   - Backend: `kubectl -n anomaly port-forward svc/anomaly-backend 8000:8000`
-  - UI: `kubectl -n anomaly port-forward svc/anomaly-ui 8501:8501`
+- UI: `kubectl -n anomaly port-forward svc/anomaly-ui 8501:8501`
 - Open the UI and stream data; confirm anomalies appear.
+  - Tip: enable “New connection each request” in the UI sidebar to improve request distribution across pods (disables HTTP keep-alive pinning).
 
 ## 5) Generate Load and Observe Autoscaling
 - In one terminal, keep port-forward to backend:
   - `kubectl -n anomaly port-forward svc/anomaly-backend 8000:8000`
 - In another terminal, run the load generator:
-  - `python scripts/load.py --url http://localhost:8000 --rps 150 --duration 120 --batch-size 64 --workers 32`
+  - `uv run python scripts/load.py --url http://localhost:8000 --rps 150 --duration 120 --batch-size 64 --workers 32 --no-keepalive`
 - Watch HPA and pods:
   - `kubectl -n anomaly get hpa -w`
   - `kubectl -n anomaly get pods -w`
@@ -114,20 +123,6 @@ This guide is the hands-on path for participants to build, deploy, and scale a r
 - Persistence:
   - Replace `emptyDir` with a PVC for model artifacts
 
-## 8) Troubleshooting Cheatsheet
-- UI shows flat lines / zero anomalies:
-  - Check caption for “Simulator source”; rebuild UI if `none`
-  - Increase anomaly rate; click “Inject Extreme Reading”
-- Backend unreachable:
-  - Compose: verify `docker compose ps` and logs
-  - K8s: check pods `kubectl -n anomaly get pods`; check probes/logs
-- HPA not scaling:
-  - Ensure `metrics-server` installed; check `kubectl top nodes/pods`
-  - Ensure CPU requests set on backend deployment
-- Low throughput:
-  - Increase `WORKERS` env or backend replicas
-  - Adjust load gen `--workers` and `--batch-size`
-
 ## Reference Commands
 - Local API: `python -m src.backend.main`
 - Local UI: `streamlit run src/ui/main.py`
@@ -141,6 +136,3 @@ This guide is the hands-on path for participants to build, deploy, and scale a r
 - Compose: `docker compose down` (in the `docker/` folder)
 - kind: `kind delete cluster --name anomaly`
 - Docker cache: `docker system prune -af --volumes`
-
-Happy hacking and safe flying!
-

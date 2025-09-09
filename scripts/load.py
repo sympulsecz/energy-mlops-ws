@@ -36,10 +36,11 @@ def make_payload(
     return {"readings": [gen_reading(anomaly_rate) for _ in range(batch_size)]}
 
 
-def do_request(url: str, payload: Dict) -> Tuple[bool, float]:
+def do_request(url: str, payload: Dict, no_keepalive: bool = False) -> Tuple[bool, float]:
     t0 = time.perf_counter()
     try:
-        r = requests.post(f"{url}/predict", json=payload, timeout=5)
+        headers = {"Connection": "close"} if no_keepalive else {}
+        r = requests.post(f"{url}/predict", json=payload, headers=headers, timeout=5)
         r.raise_for_status()
         _ = r.json()
         dt = time.perf_counter() - t0
@@ -56,6 +57,7 @@ def run_load(
     batch_size: int,
     workers: int,
     anomaly_rate: float,
+    no_keepalive: bool,
 ) -> None:
     interval = 1.0 / rps if rps > 0 else 0
     deadline = time.time() + duration
@@ -67,7 +69,7 @@ def run_load(
         next_tick = time.time()
         while time.time() < deadline:
             payload = make_payload(batch_size, anomaly_rate)
-            futures.append(pool.submit(do_request, url, payload))
+            futures.append(pool.submit(do_request, url, payload, no_keepalive))
             next_tick += interval
             sleep_for = next_tick - time.time()
             if sleep_for > 0:
@@ -127,6 +129,11 @@ def main() -> None:
         default=0.02,
         help="Probability of anomaly per reading",
     )
+    ap.add_argument(
+        "--no-keepalive",
+        action="store_true",
+        help="Close HTTP connection each request to improve load distribution across pods",
+    )
     args = ap.parse_args()
 
     print(
@@ -140,6 +147,7 @@ def main() -> None:
         batch_size=args.batch_size,
         workers=args.workers,
         anomaly_rate=args.anomaly_rate,
+        no_keepalive=args.no_keepalive,
     )
 
 

@@ -1,5 +1,5 @@
 # energy-mlops-ws
-MLOps Workshop for Energy Sector
+MLOps Workshop for Energy Sector: a simple lightweight intro to "From IPython Notebook to Prod"
 
 Quickstart (Backend)
 - Install deps: `uv sync` (or `pip install -e .[dev]`)
@@ -37,7 +37,11 @@ Kubernetes (kind) Quickstart
 - Create a cluster: `kind create cluster --name anomaly`
 - Install metrics-server (for HPA):
   - `kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml`
-  - Verify: `kubectl top nodes` (after a minute)
+  - For kind, add insecure kubelet TLS flag:
+    - `kubectl -n kube-system patch deploy metrics-server --type='json' -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'`
+  - Verify rollout and metrics:
+    - `kubectl -n kube-system rollout status deploy/metrics-server`
+    - `kubectl top nodes`
 - Build images locally:
   - `docker build -f docker/Dockerfile.backend -t anomaly-backend:latest .`
   - `docker build -f docker/Dockerfile.ui -t anomaly-ui:latest .`
@@ -46,6 +50,9 @@ Kubernetes (kind) Quickstart
   - `kind load docker-image anomaly-ui:latest --name anomaly`
 - Deploy manifests:
   - `kubectl apply -k k8s/`
+- Redeploy latest images after changes:
+  - `./scripts/kind_redeploy.sh` (rebuilds, kind-loads, and restarts deployments)
+  - Or manually: `kubectl -n anomaly rollout restart deploy anomaly-backend anomaly-ui`
 - Access services (port-forward):
   - Backend: `kubectl -n anomaly port-forward svc/anomaly-backend 8000:8000`
   - UI: `kubectl -n anomaly port-forward svc/anomaly-ui 8501:8501`
