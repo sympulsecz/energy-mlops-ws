@@ -43,8 +43,8 @@ This guide is the hands-on path for participants to build, deploy, and scale a r
 - Install Python deps:
   - `uv sync` (or `pip install -e .[dev]`)
 - Start API:
-  - `python -m src.backend.main`
-  - Health: `GET http://localhost:8000/health`
+  - `uv run python -m src.backend.main`
+  - Docs: `GET http://localhost:8000/docs`
 - Start UI (in a new terminal):
   - `streamlit run src/ui/main.py`
   - Use sidebar controls, click “Start Streaming”. If anomalies are rare, increase “Anomaly rate” or click “Inject Extreme Reading”.
