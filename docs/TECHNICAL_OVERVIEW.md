@@ -61,11 +61,11 @@ This document explains the repository architecture, key components, and how ever
   - `STREAMLIT_SERVER_PORT`: port; default 8501
 
 ## Local Development
-- Install: `uv sync` (or `pip install -e .[dev]`)
-- Run API: `python -m src.backend.main` or `uvicorn src.backend.app:app --host 0.0.0.0 --port 8000`
-- Run UI: `streamlit run src/ui/main.py`
-- Lint/format: `python scripts/dev.py fix`
-- Pre-commit hook: `python scripts/dev.py install_hooks`
+- Install: `uv sync --extra dev` (or `pip install -e .[dev]`)
+- Run API: `uv run python -m src.backend.main` or `uv run uvicorn src.backend.app:app --host 0.0.0.0 --port 8000`
+- Run UI: `uv run streamlit run src/ui/main.py`
+- Lint/format: `uv run python scripts/dev.py fix`
+- Pre-commit hook: `uv run python scripts/dev.py install_hooks`
 
 ## Containers
 - `docker/Dockerfile.backend`:
